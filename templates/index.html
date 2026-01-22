@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redeem Vault - 리딤코드 모음</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #f8f9fc;
+            --bg-white: #ffffff;
+            --bg-hover: #f1f3f9;
+            --bg-accent: #eef2ff;
+            --border: #e2e5f1;
+            --border-hover: #d1d5e8;
+            --text-primary: #1a1d2d;
+            --text-secondary: #5c6178;
+            --text-muted: #9498ad;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --accent-bg: rgba(99, 102, 241, 0.08);
+            --green: #10b981;
+            --green-light: #34d399;
+            --green-bg: rgba(16, 185, 129, 0.08);
+            --orange: #f59e0b;
+            --orange-bg: rgba(245, 158, 11, 0.08);
+            --red: #ef4444;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .logo-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Search */
+        .search-box {
+            flex: 1;
+            max-width: 360px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.625rem 1rem 0.625rem 2.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: var(--bg-main);
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: var(--bg-white);
+            box-shadow: 0 0 0 3px var(--accent-bg);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.875rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Header Right */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Stats Pills */
+        .stats-pills {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .stat-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            background: var(--bg-main);
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+
+        .stat-pill .num {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .stat-pill.green .num {
+            color: var(--green);
+        }
+
+        /* Scrape Button */
+        .scrape-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scrape-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .scrape-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .scrape-btn.running {
+            background: var(--orange);
+        }
+
+        .scrape-btn.cooldown {
+            background: var(--text-muted);
+        }
+
+        .scrape-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .scrape-btn .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .scrape-btn .cooldown-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem 3rem;
+        }
+
+        /* Quick Access */
+        .quick-section {
+            background: linear-gradient(135deg, var(--green-bg), var(--accent-bg));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .quick-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .quick-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .quick-title {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .quick-codes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .quick-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .quick-chip:hover {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+            transform: translateY(-1px);
+        }
+
+        .quick-chip .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .quick-chip .game-tag {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Scrape Status Bar */
+        .scrape-status {
+            display: none;
+            background: var(--orange-bg);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .scrape-status.active {
+            display: flex;
+        }
+
+        .scrape-status .spinner-large {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(245, 158, 11, 0.2);
+            border-top-color: var(--orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .scrape-status-text {
+            flex: 1;
+        }
+
+        .scrape-status-text strong {
+            color: var(--orange);
+        }
+
+        .scrape-status-text p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Game Tabs */
+        .tabs-wrapper {
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tabs-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        .game-tabs {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-white);
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.625rem 1rem;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+
+        .tab-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .tab-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .tab-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .tab-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            padding: 0.125rem 0.375rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+
+        .tab-btn:not(.active) .tab-count {
+            background: var(--bg-main);
+            color: var(--text-muted);
+        }
+
+        .tab-new {
+            background: var(--green);
+            color: white;
+            font-size: 0.625rem;
+            font-weight: 700;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+        }
+
+        /* Panel */
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+            animation: fadeSlide 0.25s ease;
+        }
+
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Panel Header */
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .panel-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 2px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .panel-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .panel-info h2 {
+            font-size: 1.375rem;
+            font-weight: 700;
+            margin-bottom: 0.125rem;
+        }
+
+        .panel-info p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .panel-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Code Cards */
+        .code-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .code-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: all 0.15s;
+        }
+
+        .code-card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .code-card.is-new {
+            background: linear-gradient(90deg, var(--green-bg) 0%, var(--bg-white) 20%);
+            border-left: 3px solid var(--green);
+        }
+
+        .code-idx {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-main);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .code-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .code-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .code-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+        .code-text:hover {
+            background: var(--accent-bg);
+            color: var(--accent);
+        }
+
+        .new-badge {
+            font-size: 0.625rem;
+            font-weight: 700;
+            color: var(--green);
+            background: var(--green-bg);
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .code-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .code-meta a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        .code-meta a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        .code-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            padding: 0.5rem 0.875rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .btn-outline {
+            background: var(--bg-white);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .btn-outline.copied {
+            border-color: var(--green);
+            color: var(--green);
+            background: var(--green-bg);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+        }
+
+        .btn-green {
+            background: var(--green);
+            color: white;
+        }
+
+        .btn-green:hover {
+            background: var(--green-light);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            background: var(--bg-main);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        .empty-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .empty-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--green);
+        }
+
+        .toast.error {
+            background: var(--red);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-inner {
+                flex-wrap: wrap;
+            }
+
+            .search-box {
+                order: 3;
+                max-width: 100%;
+                flex-basis: 100%;
+                margin-top: 0.75rem;
+            }
+
+            .stats-pills {
+                display: none;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .code-card {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+
+            .code-idx {
+                display: none;
+            }
+
+            .code-actions {
+                justify-content: stretch;
+            }
+
+            .code-actions .btn {
+                flex: 1;
+            }
+
+            .panel-header {
+                flex-wrap: wrap;
+            }
+
+            .panel-actions {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 0.75rem;
+            }
+
+            .panel-actions .btn {
+                flex: 1;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-main);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M21 8v13H3V8"/>
+                        <path d="M1 3h22v5H1z"/>
+                        <path d="M10 12h4"/>
+                    </svg>
+                </div>
+                Redeem Vault
+            </a>
+
+            <div class="search-box">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" class="search-input" placeholder="코드 검색..." id="searchInput">
+            </div>
+
+            <div class="header-right">
+                <div class="stats-pills">
+                    <div class="stat-pill">
+                        <span>전체</span>
+                        <span class="num" id="totalCount">{{ stats.total }}</span>
+                    </div>
+                    <div class="stat-pill green">
+                        <span>오늘</span>
+                        <span class="num" id="todayCount">{{ today_count }}</span>
+                    </div>
+                </div>
+
+                <button class="scrape-btn" id="scrapeBtn" onclick="startScrape()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="scrapeIcon">
+                        <path d="M23 4v6h-6"/>
+                        <path d="M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    <span id="scrapeBtnText">새로고침</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Scrape Status -->
+        <div class="scrape-status" id="scrapeStatus">
+            <div class="spinner-large"></div>
+            <div class="scrape-status-text">
+                <strong>스크래핑 진행 중...</strong>
+                <p>새로운 리딤코드를 수집하고 있습니다. 잠시만 기다려주세요.</p>
+            </div>
+        </div>
+
+        <!-- Quick Access -->
+        {% set recent_new = [] %}
+        {% for game, codes in codes_by_game.items() %}
+            {% for code in codes if code.is_new %}
+                {% set _ = recent_new.append({'code': code.code, 'game': game, 'name': game_info.get(game, {}).get('name', game), 'color': game_info.get(game, {}).get('color', '#6366f1')}) %}
+            {% endfor %}
+        {% endfor %}
+        
+        {% if recent_new %}
+        <div class="quick-section">
+            <div class="quick-header">
+                <span class="quick-dot"></span>
+                <span class="quick-title">오늘 추가된 코드 (클릭하여 복사)</span>
+            </div>
+            <div class="quick-codes">
+                {% for item in recent_new[:10] %}
+                <div class="quick-chip" onclick="copyCode('{{ item.code }}', this)">
+                    <span class="dot" style="background: {{ item.color }};"></span>
+                    {{ item.code }}
+                    <span class="game-tag">{{ item.name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Game Tabs -->
+        {% if codes_by_game %}
+        <div class="tabs-wrapper">
+            <div class="game-tabs">
+                {% for game, codes in codes_by_game.items() %}
+                {% set info = game_info.get(game, {'name': game, 'icon': ''}) %}
+                {% set new_count = codes|selectattr('is_new')|list|length %}
+                <button class="tab-btn {% if loop.first %}active{% endif %}" data-game="{{ game }}">
+                    <div class="tab-icon">
+                        {% if info.icon %}
+                        <img src="{{ info.icon }}" alt="{{ info.name }}">
+                        {% endif %}
+                    </div>
+                    {{ info.name }}
+                    <span class="tab-count">{{ codes|length }}</span>
+                    {% if new_count > 0 %}
+                    <span class="tab-new">+{{ new_count }}</span>
+                    {% endif %}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Panels -->
+        {% for game, codes in codes_by_game.items() %}
+        {% set info = game_info.get(game, {'name': game, 'color': '#6366f1', 'gradient': 'linear-gradient(135deg, #6366f1, #8b5cf6)', 'icon': '', 'redeem_url': ''}) %}
+        <div class="panel {% if loop.first %}active{% endif %}" data-panel="{{ game }}">
+            <div class="panel-header">
+                <div class="panel-icon">
+                    {% if info.icon %}
+                    <img src="{{ info.icon }}" alt="{{ info.name }}">
+                    {% endif %}
+                </div>
+                <div class="panel-info">
+                    <h2>{{ info.name }}</h2>
+                    <p>{{ codes|length }}개의 리딤코드</p>
+                </div>
+                <div class="panel-actions">
+                    <button class="btn btn-outline" onclick="copyAllCodes('{{ game }}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        전체 복사
+                    </button>
+                    {% if info.redeem_url %}
+                    <a href="{{ info.redeem_url }}" target="_blank" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        리딤 페이지
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="code-grid" data-codes="{{ game }}">
+                {% for code in codes %}
+                <div class="code-card {% if code.is_new %}is-new{% endif %}">
+                    <div class="code-idx">{{ loop.index }}</div>
+                    <div class="code-main">
+                        <div class="code-row">
+                            <span class="code-text" onclick="copyCode('{{ code.code }}', this)" data-code="{{ code.code }}">{{ code.code }}</span>
+                            {% if code.is_new %}<span class="new-badge">NEW</span>{% endif %}
+                        </div>
+                        <div class="code-meta">
+                            <span>{{ code.created_at }}</span>
+                            {% if code.source_url %}
+                            <a href="{{ code.source_url }}" target="_blank" title="{{ code.source_title }}">
+                                {{ code.source_title[:30] }}{% if code.source_title|length > 30 %}...{% endif %}
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="code-actions">
+                        <button class="btn btn-outline" onclick="copyCode('{{ code.code }}', this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                            복사
+                        </button>
+                        {% if info.redeem_url %}
+                        <a href="{{ info.redeem_url }}{{ code.code }}" target="_blank" class="btn btn-green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            사용
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 8v13H3V8"/>
+                    <path d="M1 3h22v5H1z"/>
+                    <path d="M10 12h4"/>
+                </svg>
+            </div>
+            <div class="empty-title">리딤코드가 없습니다</div>
+            <p class="empty-desc">아래 버튼을 눌러 코드를 수집하세요</p>
+            <button class="btn btn-primary" onclick="startScrape()" style="padding: 0.75rem 1.5rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                스크래핑 시작
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer class="footer">
+        <p>마지막 업데이트: {{ now().strftime('%Y-%m-%d %H:%M') }}</p>
+    </footer>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Scrape state
+        let isRunning = {{ 'true' if scrape_info.is_running else 'false' }};
+        let cooldownSeconds = 0;
+        let cooldownInterval = null;
+        let statusCheckInterval = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkScrapeStatus();
+            if (isRunning) {
+                startStatusPolling();
+            }
+        });
+
+        // Check scrape status
+        async function checkScrapeStatus() {
+            try {
+                const res = await fetch('/api/scrape/status');
+                const data = await res.json();
+                
+                isRunning = data.is_running;
+                cooldownSeconds = data.remaining_seconds || 0;
+                
+                updateScrapeButton();
+                
+                if (isRunning) {
+                    document.getElementById('scrapeStatus').classList.add('active');
+                    startStatusPolling();
+                } else {
+                    document.getElementById('scrapeStatus').classList.remove('active');
+                    stopStatusPolling();
+                    
+                    if (cooldownSeconds > 0) {
+                        startCooldown();
+                    }
+                    
+                    // 결과 확인
+                    if (data.last_result) {
+                        if (data.last_result.success) {
+                            showToast('스크래핑 완료! 페이지를 새로고침합니다.', 'success');
+                            setTimeout(() => location.reload(), 1500);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Status check failed:', e);
+            }
+        }
+
+        // Start scrape
+        async function startScrape() {
+            if (isRunning || cooldownSeconds > 0) return;
+            
+            try {
+                const res = await fetch('/api/scrape', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    isRunning = true;
+                    showToast('스크래핑을 시작합니다...', 'success');
+                    document.getElementById('scrapeStatus').classList.add('active');
+                    updateScrapeButton();
+                    startStatusPolling();
+                } else {
+                    if (data.remaining_seconds) {
+                        cooldownSeconds = data.remaining_seconds;
+                        startCooldown();
+                    }
+                    showToast(data.message, 'error');
+                }
+            } catch (e) {
+                showToast('스크래핑 요청 실패', 'error');
+            }
+        }
+
+        // Update button state
+        function updateScrapeButton() {
+            const btn = document.getElementById('scrapeBtn');
+            const icon = document.getElementById('scrapeIcon');
+            const text = document.getElementById('scrapeBtnText');
+            
+            btn.classList.remove('running', 'cooldown');
+            
+            if (isRunning) {
+                btn.classList.add('running');
+                btn.disabled = true;
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>';
+                icon.classList.add('spinner');
+                text.textContent = '진행중...';
+            } else if (cooldownSeconds > 0) {
+                btn.classList.add('cooldown');
+                btn.disabled = true;
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+                icon.classList.remove('spinner');
+                text.innerHTML = `<span class="cooldown-time">${formatTime(cooldownSeconds)}</span>`;
+            } else {
+                btn.disabled = false;
+                icon.innerHTML = '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>';
+                icon.classList.remove('spinner');
+                text.textContent = '새로고침';
+            }
+        }
+
+        // Format time
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Start cooldown timer
+        function startCooldown() {
+            if (cooldownInterval) clearInterval(cooldownInterval);
+            
+            updateScrapeButton();
+            
+            cooldownInterval = setInterval(() => {
+                cooldownSeconds--;
+                if (cooldownSeconds <= 0) {
+                    clearInterval(cooldownInterval);
+                    cooldownInterval = null;
+                }
+                updateScrapeButton();
+            }, 1000);
+        }
+
+        // Status polling
+        function startStatusPolling() {
+            if (statusCheckInterval) return;
+            statusCheckInterval = setInterval(checkScrapeStatus, 3000);
+        }
+
+        function stopStatusPolling() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const game = btn.dataset.game;
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                document.querySelector(`[data-panel="${game}"]`)?.classList.add('active');
+            });
+        });
+
+        // Copy code
+        function copyCode(code, el) {
+            navigator.clipboard.writeText(code).then(() => {
+                showToast(`"${code}" 복사됨!`);
+                if (el && el.classList.contains('btn-outline')) {
+                    el.classList.add('copied');
+                    setTimeout(() => el.classList.remove('copied'), 1500);
+                }
+            });
+        }
+
+        // Copy all codes
+        function copyAllCodes(game) {
+            const codes = Array.from(document.querySelectorAll(`[data-panel="${game}"] .code-text`))
+                .map(el => el.dataset.code);
+            if (codes.length) {
+                navigator.clipboard.writeText(codes.join('\n')).then(() => {
+                    showToast(`${codes.length}개 코드가 복사되었습니다!`);
+                });
+            }
+        }
+
+        // Search
+        const searchInput = document.getElementById('searchInput');
+        searchInput?.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            document.querySelectorAll('.code-card').forEach(card => {
+                const code = card.querySelector('.code-text')?.dataset.code?.toLowerCase() || '';
+                const source = card.querySelector('.code-meta a')?.textContent?.toLowerCase() || '';
+                const match = !query || code.includes(query) || source.includes(query);
+                card.style.display = match ? '' : 'none';
+            });
+        });
+
+        // Toast
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast';
+            if (type) toast.classList.add(type);
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+{
+  "keywords": [
+    "리딤", "쿠폰", "코드", "기프트", "보상",
+    "redeem", "coupon", "code", "gift", "reward",
+    "cdkey", "cd-key", "cd key", "CDKEY", "CD-KEY", "CD KEY",
+    "giftcode", "gift code", "GIFTCODE", "GIFT CODE", "GIFT CODE"
+  ],
+  "_keywords_설명": "제목이나 본문에 이 키워드 중 하나가 있어야 코드를 추출합니다",
+  "sites": [
+    {
+      "game": "genshin",
+      "game_name": "원신",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/genshin?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": true
+    },
+    {
+      "game": "starrail",
+      "game_name": "붕괴: 스타레일",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/hkstarrail?category=%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": true
+    },
+    {
+      "game": "zzz",
+      "game_name": "젠레스 존 제로",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/zenlesszonezero?category=%EC%A0%95%EB%B3%B4%2F%EA%B3%B5%EB%9E%B5&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": true
+    },
+    {
+      "game": "honkai3rd",
+      "game_name": "붕괴3rd",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/honkai3rd?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": false
+    },
+    {
+      "game": "wuwa",
+      "game_name": "명조: 워더링 웨이브",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/wutheringwaves?category=%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": true
+    },
+    {
+      "game": "bluearchive",
+      "game_name": "블루 아카이브",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/bluearchive?target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": true
+    },
+    {
+      "game": "gfl2",
+      "game_name": "소녀전선2: 망명",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/gilrsfrontline2exili?category=%EA%B3%B5%EB%9E%B5%2F%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": true
+    },
+    {
+      "game": "nikke",
+      "game_name": "승리의 여신: 니케",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/nikke?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": false
+    },
+    {
+      "game": "trikkal",
+      "game_name": "트릭컬 리바이브",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/trickycalre?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": false
+    },
+    {
+      "game": "arknights",
+      "game_name": "명일방주",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/arknights?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": false
+    },
+    {
+      "game": "endfield",
+      "game_name": "명일방주: 엔드필드",
+      "site_type": "arca",
+      "site_name": "아카라이브",
+      "url": "https://arca.live/b/akendfield?category=%EC%A0%95%EB%B3%B4%2F%EA%B3%B5%EB%9E%B5&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "enabled": true
+    },
+    {
+      "game": "_multi",
+      "game_name": "멀티 게임 (유튜브)",
+      "site_type": "youtube",
+      "site_name": "흐구구구 유튜브",
+      "url": "https://www.youtube.com/@%ED%9D%90%EA%B5%AC%EA%B5%AC%EA%B5%AC/community",
+      "enabled": false,
+      "_note": "유튜브 커뮤니티는 현재 headless 브라우저로 스크래핑이 어렵습니다",
+      "options": {
+        "parse_game_tags": true,
+        "game_tags": {
+          "[원신]": "genshin",
+          "[스타레일]": "starrail",
+          "[붕스]": "starrail",
+          "[젠레스]": "zzz",
+          "[젠존제]": "zzz",
+          "[붕괴3rd]": "honkai3rd",
+          "[붕삼]": "honkai3rd",
+          "[명조]": "wuwa",
+          "[블아]": "bluearchive",
+          "[블루아카이브]": "bluearchive",
+          "[소전2]": "gfl2",
+          "[소녀전선2]": "gfl2",
+          "[니케]": "nikke",
+          "[트릭컬]": "trikkal",
+          "[명방]": "arknights",
+          "[명일방주]": "arknights",
+          "[림버스]": "limbus",
+          "[엔드필드]": "endfield"
+        }
+      }
+    }
+  ],
+  "_설명": {
+    "enabled": "true = 스크래핑 ON, false = 스크래핑 OFF",
+    "site_type": "arca = 아카라이브, youtube = 유튜브 커뮤니티",
+    "game": "_multi = 여러 게임 코드가 섞인 사이트 (태그로 구분)",
+    "options.game_tags": "[태그] -> 게임ID 매핑"
+  }
+}
