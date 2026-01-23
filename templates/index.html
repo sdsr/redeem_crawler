@@ -1106,12 +1106,13 @@
                         startCooldown();
                     }
                     
-                    // 결과 확인
-                    if (data.last_result) {
-                        if (data.last_result.success) {
-                            showToast('스크래핑 완료! 페이지를 새로고침합니다.', 'success');
-                            setTimeout(() => location.reload(), 1500);
-                        }
+                    // 결과 확인 (완료 시 한 번만 새로고침)
+                    if (data.last_result && data.last_result.success) {
+                        // 결과 확인했음을 서버에 알림 (중복 새로고침 방지)
+                        await fetch('/api/scrape/ack', { method: 'POST' });
+                        showToast('스크래핑 완료! 페이지를 새로고침합니다.', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                        return; // 더 이상 폴링하지 않음
                     }
                 }
             } catch (e) {

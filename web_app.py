@@ -374,6 +374,18 @@ def api_scrape_status():
         })
 
 
+@app.route('/api/scrape/ack', methods=['POST'])
+def api_scrape_ack():
+    """API: 스크래핑 결과 확인 완료 (결과 리셋)
+    
+    클라이언트에서 결과를 확인한 후 호출하여 중복 새로고침 방지
+    """
+    global scrape_state
+    with scrape_lock:
+        scrape_state['last_result'] = None
+    return jsonify({'success': True})
+
+
 @app.route('/api/codes/delete/<int:code_id>', methods=['DELETE'])
 def api_delete_code(code_id):
     """API: 리딤코드 삭제 (관리자 전용, Soft Delete)
