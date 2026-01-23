@@ -70,7 +70,7 @@
       "site_type": "arca",
       "site_name": "아카라이브",
       "url": "https://arca.live/b/nikke?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
-      "enabled": false
+      "enabled": true
     },
     {
       "game": "trikkal",

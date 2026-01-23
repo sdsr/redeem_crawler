@@ -24,7 +24,7 @@ from services.code_service import CodeService, ArticleService
 
 
 def scrape_site(site: SiteConfig, max_pages: int = 1, max_articles: int = 10,
-                skip_scraped: bool = True) -> dict:
+                skip_scraped: bool = True, progress: str = "") -> dict:
     """
     단일 사이트 스크래핑
     
@@ -33,13 +33,15 @@ def scrape_site(site: SiteConfig, max_pages: int = 1, max_articles: int = 10,
         max_pages: 최대 페이지 수 (아카라이브용)
         max_articles: 최대 게시글 수
         skip_scraped: 이미 방문한 URL 건너뛰기
+        progress: 진행 상황 문자열 (예: "[1/5]")
         
     Returns:
         결과 딕셔너리
     """
     print(f"\n{'='*60}")
-    print(f"[{site.game_name}] {site.site_name} 스크래핑")
-    print(f"{'='*60}\n")
+    print(f"{progress} [{site.game_name}] {site.site_name} 스크래핑 시작")
+    print(f"    URL: {site.url[:60]}...")
+    print(f"{'='*60}")
     
     service = CodeService()
     codes_to_save = []
@@ -93,17 +95,20 @@ def scrape_site(site: SiteConfig, max_pages: int = 1, max_articles: int = 10,
             return {"saved": 0, "duplicates": 0, "errors": 1}
         
         if not codes_to_save:
-            print(f"\n[결과] 새로운 리딤코드를 찾지 못했습니다.")
+            print(f"\n[완료] {site.game_name} - 새로운 리딤코드 없음")
             return {"saved": 0, "duplicates": 0}
         
         # 배치 저장
         results = service.save_codes_batch(codes_to_save)
         
         # 결과 출력
+        print(f"\n[완료] {site.game_name} 스크래핑 결과:")
         if results["saved"] > 0:
-            print(f"\n[저장] 새 코드 {results['saved']}개:")
+            print(f"  + 새 코드 {results['saved']}개 저장:")
             for code in results["saved_codes"]:
-                print(f"  + {code}")
+                print(f"    - {code}")
+        if results["duplicates"] > 0:
+            print(f"  - 중복 코드 {results['duplicates']}개 스킵")
         
         return results
         
@@ -148,12 +153,19 @@ def scrape_all(max_pages: int = 1, max_articles: int = 20,
         "duplicate_codes": []
     }
     
-    for site in sites:
+    total_sites = len(sites)
+    print(f"\n{'#'*60}")
+    print(f"# 스크래핑 시작: 총 {total_sites}개 사이트")
+    print(f"{'#'*60}")
+    
+    for idx, site in enumerate(sites, 1):
+        progress = f"[{idx}/{total_sites}]"
         results = scrape_site(
             site=site,
             max_pages=max_pages,
             max_articles=max_articles,
-            skip_scraped=skip_scraped
+            skip_scraped=skip_scraped,
+            progress=progress
         )
         
         total_results["saved"] += results.get("saved", 0)
@@ -273,6 +285,8 @@ def show_stats():
 
 def main():
     """CLI 진입점"""
+    print("[INFO] main.py 시작")
+    sys.stdout.flush()
     parser = argparse.ArgumentParser(
         description="리딤코드 스크래퍼 - 원신/스타레일/젠존제 등",
         formatter_class=argparse.RawDescriptionHelpFormatter,

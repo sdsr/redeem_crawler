@@ -9,9 +9,7 @@ from database import get_session, RedeemCode
 from sqlalchemy import func
 from datetime import datetime, date, timedelta
 import threading
-import subprocess
 import sys
-import os
 import secrets
 
 app = Flask(__name__)
@@ -105,56 +103,43 @@ def get_stats():
 
 
 def run_scraper():
-    """백그라운드에서 스크래퍼 실행"""
+    """백그라운드에서 스크래퍼 실행 (직접 import 방식)"""
     global scrape_state
     
     print("\n" + "="*50)
     print("[스크래핑 시작]")
     print("="*50)
+    sys.stdout.flush()
     
     try:
-        # main.py --scrape 실행 (실시간 출력)
-        process = subprocess.Popen(
-            [sys.executable, 'main.py', '--scrape'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            cwd=os.path.dirname(os.path.abspath(__file__)),
-            bufsize=1,  # 라인 버퍼링
-            encoding='utf-8',
-            errors='replace'
-        )
+        # main.py의 scrape_all 함수를 직접 import해서 실행
+        # subprocess보다 안정적이고 로그가 바로 출력됨
+        from main import scrape_all
         
-        output_lines = []
-        try:
-            for line in iter(process.stdout.readline, ''):
-                if line:
-                    print(line, end='')  # 실시간 콘솔 출력
-                    output_lines.append(line)
-            process.wait(timeout=300)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            with scrape_lock:
-                scrape_state['last_result'] = {
-                    'success': False,
-                    'output': ''.join(output_lines[-50:]),
-                    'error': '스크래핑 시간 초과 (5분)'
-                }
-            return
+        print("[스크래핑] scrape_all() 호출...")
+        sys.stdout.flush()
+        
+        # 스크래핑 실행
+        scrape_all(max_pages=1, max_articles=20, skip_scraped=True)
         
         with scrape_lock:
             scrape_state['last_result'] = {
-                'success': process.returncode == 0,
-                'output': ''.join(output_lines[-50:]),  # 마지막 50줄
-                'error': '' if process.returncode == 0 else f'Exit code: {process.returncode}'
+                'success': True,
+                'output': '스크래핑 완료',
+                'error': ''
             }
             
         print("\n" + "="*50)
-        print(f"[스크래핑 완료] 결과: {'성공' if process.returncode == 0 else '실패'}")
+        print("[스크래핑 완료] 성공")
         print("="*50 + "\n")
+        sys.stdout.flush()
         
     except Exception as e:
-        print(f"\n[스크래핑 오류] {e}\n")
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"\n[스크래핑 오류] {e}")
+        print(error_msg)
+        sys.stdout.flush()
         with scrape_lock:
             scrape_state['last_result'] = {
                 'success': False,
@@ -314,9 +299,14 @@ def api_scrape():
     """API: 스크래핑 시작"""
     global scrape_state
     
+    print("\n[API] /api/scrape 호출됨")
+    sys.stdout.flush()
+    
     with scrape_lock:
         # 이미 실행 중인지 확인
         if scrape_state['is_running']:
+            print("[API] 이미 실행 중 - 거부")
+            sys.stdout.flush()
             return jsonify({
                 'success': False,
                 'message': '스크래핑이 이미 진행 중입니다.',
@@ -330,6 +320,8 @@ def api_scrape():
             if elapsed < cooldown:
                 remaining = cooldown - elapsed
                 remaining_seconds = int(remaining.total_seconds())
+                print(f"[API] 쿨타임 중 - {remaining_seconds}초 남음")
+                sys.stdout.flush()
                 return jsonify({
                     'success': False,
                     'message': f'쿨타임 중입니다. {remaining_seconds}초 후에 다시 시도하세요.',
@@ -341,6 +333,9 @@ def api_scrape():
         scrape_state['is_running'] = True
         scrape_state['last_run'] = datetime.now()
         scrape_state['last_result'] = None
+    
+    print("[API] 스크래핑 스레드 시작")
+    sys.stdout.flush()
     
     # 백그라운드에서 실행
     thread = threading.Thread(target=run_scraper)
@@ -447,4 +442,5 @@ if __name__ == '__main__':
     print("  리딤코드 뷰어 시작")
     print("  http://localhost:5000 에서 확인하세요")
     print("=" * 50)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # use_reloader=False: 리로더가 2개 프로세스를 띄우는 것 방지
+    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)
