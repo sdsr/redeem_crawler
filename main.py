@@ -62,7 +62,8 @@ def scrape_site(site: SiteConfig, max_pages: int = 1, max_articles: int = 10,
                             "code": code,
                             "game": site.game,
                             "source_url": article.url,
-                            "source_title": article.title
+                            "source_title": article.title,
+                            "source_posted_at": article.posted_at  # 작성일 추가
                         })
             finally:
                 scraper.close()

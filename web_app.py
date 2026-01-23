@@ -55,6 +55,7 @@ def get_all_codes():
                 'game': code.game,
                 'source_title': code.source_title or '',
                 'source_url': code.source_url or '',
+                'source_posted_at': code.source_posted_at.strftime('%Y-%m-%d %H:%M') if code.source_posted_at else '',
                 'is_valid': code.is_valid,
                 'is_new': is_new,
                 'created_at': code.created_at.strftime('%Y-%m-%d %H:%M') if code.created_at else ''

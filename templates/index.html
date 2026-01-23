@@ -999,7 +999,11 @@
                             {% if code.is_new %}<span class="new-badge">NEW</span>{% endif %}
                         </div>
                         <div class="code-meta">
-                            <span>{{ code.created_at }}</span>
+                            {% if code.source_posted_at %}
+                            <span title="원본 작성일">{{ code.source_posted_at }}</span>
+                            {% else %}
+                            <span title="등록일">{{ code.created_at }}</span>
+                            {% endif %}
                             {% if code.source_url %}
                             <a href="{{ code.source_url }}" target="_blank" title="{{ code.source_title }}">
                                 {{ code.source_title[:30] }}{% if code.source_title|length > 30 %}...{% endif %}

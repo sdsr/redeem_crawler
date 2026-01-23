@@ -6,6 +6,7 @@ requests 호환 라이브러리입니다.
 """
 
 import time
+from datetime import datetime
 import cloudscraper
 from bs4 import BeautifulSoup
 from typing import List, Optional, Tuple
@@ -25,6 +26,7 @@ class ArticleInfo:
     url: str
     title: str
     codes: List[str] = None
+    posted_at: datetime = None  # 게시글 작성일
     
     def __post_init__(self):
         if self.codes is None:
@@ -134,22 +136,44 @@ class ArcaScraper:
         print(f"[정보] {len(articles)}개 새 게시글 발견")
         return articles
     
-    def get_article_content(self, url: str, include_comments: bool = True) -> Optional[str]:
+    def get_article_content(self, url: str, include_comments: bool = True) -> Tuple[Optional[str], Optional[datetime]]:
         """
-        게시글 본문 내용을 가져옴
+        게시글 본문 내용과 작성일을 가져옴
         
         Args:
             url: 게시글 URL
             include_comments: 댓글도 포함할지 여부 (기본값: True)
             
         Returns:
-            본문 + 댓글 텍스트 (또는 본문만)
+            (본문 텍스트, 작성일) 튜플
         """
         soup = self._request(url)
         if not soup:
-            return None
+            return None, None
         
         all_text = []
+        posted_at = None
+        
+        # 작성일 추출: <span class="head">작성일</span> 또는 <span class="head">Uploaded date</span>
+        # (아카라이브는 언어 설정에 따라 한글/영어로 표시됨)
+        date_head = soup.find('span', class_='head', string='작성일')
+        if not date_head:
+            date_head = soup.find('span', class_='head', string='Uploaded date')
+        
+        if date_head:
+            time_elem = date_head.find_next('time')
+            if time_elem and time_elem.get('datetime'):
+                try:
+                    # ISO 형식: 2026-01-03T14:25:41.000Z
+                    dt_str = time_elem.get('datetime')
+                    # .000Z 부분 처리
+                    if dt_str.endswith('Z'):
+                        dt_str = dt_str[:-1]  # Z 제거
+                    if '.' in dt_str:
+                        dt_str = dt_str.split('.')[0]  # 밀리초 제거
+                    posted_at = datetime.fromisoformat(dt_str)
+                except (ValueError, TypeError) as e:
+                    print(f"[경고] 작성일 파싱 실패: {e}")
         
         # 1. 본문 추출
         content_elem = soup.select_one('.article-content')
@@ -178,7 +202,8 @@ class ArcaScraper:
                 if comment_text:
                     all_text.append(comment_text)
         
-        return ' '.join(all_text) if all_text else None
+        content = ' '.join(all_text) if all_text else None
+        return content, posted_at
     
     def scrape_articles(self, max_pages: int = 1, max_articles: int = 10) -> List[ArticleInfo]:
         """
@@ -214,8 +239,8 @@ class ArcaScraper:
                 # 키워드 필터링: 제목에 키워드가 있는지 먼저 확인
                 title_has_keyword = self.site_manager.has_keyword(title)
                 
-                # 본문에서 코드 추출
-                content = self.get_article_content(url)
+                # 본문과 작성일 추출
+                content, posted_at = self.get_article_content(url)
                 
                 # 제목에 키워드가 없으면 본문에서도 확인
                 if not title_has_keyword:
@@ -254,10 +279,13 @@ class ArcaScraper:
                     article = ArticleInfo(
                         url=url,
                         title=title,
-                        codes=all_codes
+                        codes=all_codes,
+                        posted_at=posted_at  # 작성일 추가
                     )
                     all_articles.append(article)
                     print(f"[발견] 리딤코드 {len(all_codes)}개: {all_codes}")
+                    if posted_at:
+                        print(f"       작성일: {posted_at.strftime('%Y-%m-%d %H:%M:%S')}")
                 
                 articles_processed += 1
         

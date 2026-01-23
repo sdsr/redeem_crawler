@@ -4,6 +4,7 @@
 리딤코드의 저장, 조회, 중복 검증 등의 비즈니스 로직을 처리합니다.
 """
 
+from datetime import datetime
 from typing import List, Optional, Tuple
 from sqlalchemy.exc import IntegrityError
 
@@ -29,7 +30,7 @@ class CodeService:
             session.close()
     
     def save_code(self, code: str, game: str, source_url: str = None, 
-                  source_title: str = None) -> Tuple[bool, str]:
+                  source_title: str = None, source_posted_at: datetime = None) -> Tuple[bool, str]:
         """리딤코드를 데이터베이스에 저장"""
         if self.code_exists(code):
             return (False, f"이미 존재하는 코드: {code}")
@@ -40,7 +41,8 @@ class CodeService:
                 code=code,
                 game=game,
                 source_url=source_url,
-                source_title=source_title
+                source_title=source_title,
+                source_posted_at=source_posted_at
             )
             session.add(new_code)
             session.commit()
@@ -70,7 +72,8 @@ class CodeService:
                 code=code_info["code"],
                 game=code_info["game"],
                 source_url=code_info.get("source_url"),
-                source_title=code_info.get("source_title")
+                source_title=code_info.get("source_title"),
+                source_posted_at=code_info.get("source_posted_at")
             )
             
             if success:

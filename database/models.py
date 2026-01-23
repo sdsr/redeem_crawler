@@ -23,6 +23,7 @@ class RedeemCode(Base):
         game: 게임 종류 (genshin, starrail, zzz)
         source_url: 코드를 발견한 게시글 URL
         source_title: 게시글 제목
+        source_posted_at: 원본 게시글 작성일
         is_valid: 코드 유효 여부 (기본값: True)
         is_deleted: 삭제 여부 (Soft Delete, 기본값: False)
         created_at: 생성 시간
@@ -35,6 +36,7 @@ class RedeemCode(Base):
     game = Column(String(20), nullable=False, index=True)
     source_url = Column(String(500), nullable=True)
     source_title = Column(String(200), nullable=True)
+    source_posted_at = Column(DateTime, nullable=True)  # 원본 게시글 작성일
     is_valid = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False, index=True)  # Soft Delete
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -56,6 +58,7 @@ class RedeemCode(Base):
             "game": self.game,
             "source_url": self.source_url,
             "source_title": self.source_title,
+            "source_posted_at": self.source_posted_at.isoformat() if self.source_posted_at else None,
             "is_valid": self.is_valid,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
