@@ -4,7 +4,7 @@
 Flask 기반 웹 애플리케이션으로 저장된 리딤코드를 확인합니다.
 """
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session
 from database import get_session, RedeemCode
 from sqlalchemy import func
 from datetime import datetime, date, timedelta
@@ -12,8 +12,13 @@ import threading
 import subprocess
 import sys
 import os
+import secrets
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)  # 세션용 시크릿 키
+
+# 관리자 비밀번호 (원하는 값으로 변경하세요)
+ADMIN_PASSWORD = "admin1234"
 
 # 스크래핑 상태 관리
 scrape_state = {
@@ -26,12 +31,15 @@ scrape_lock = threading.Lock()
 
 
 def get_all_codes():
-    """DB에서 모든 코드 조회"""
+    """DB에서 모든 코드 조회 (삭제되지 않은 것만)"""
     session = get_session()
     today = date.today()
     
     try:
-        codes = session.query(RedeemCode).order_by(
+        # is_deleted=False인 코드만 조회 (Soft Delete 적용)
+        codes = session.query(RedeemCode).filter(
+            RedeemCode.is_deleted == False
+        ).order_by(
             RedeemCode.game,
             RedeemCode.created_at.desc()
         ).all()
@@ -59,12 +67,13 @@ def get_all_codes():
 
 
 def get_today_count():
-    """오늘 추가된 코드 수"""
+    """오늘 추가된 코드 수 (삭제되지 않은 것만)"""
     session = get_session()
     today = date.today()
     try:
         count = session.query(func.count(RedeemCode.id)).filter(
-            func.date(RedeemCode.created_at) == today
+            func.date(RedeemCode.created_at) == today,
+            RedeemCode.is_deleted == False
         ).scalar()
         return count or 0
     finally:
@@ -72,15 +81,19 @@ def get_today_count():
 
 
 def get_stats():
-    """통계 정보 조회"""
+    """통계 정보 조회 (삭제되지 않은 것만)"""
     session = get_session()
     try:
-        total = session.query(func.count(RedeemCode.id)).scalar()
+        total = session.query(func.count(RedeemCode.id)).filter(
+            RedeemCode.is_deleted == False
+        ).scalar()
         
-        # 게임별 통계
+        # 게임별 통계 (삭제되지 않은 것만)
         game_stats = session.query(
             RedeemCode.game,
             func.count(RedeemCode.id)
+        ).filter(
+            RedeemCode.is_deleted == False
         ).group_by(RedeemCode.game).all()
         
         return {
@@ -95,30 +108,53 @@ def run_scraper():
     """백그라운드에서 스크래퍼 실행"""
     global scrape_state
     
+    print("\n" + "="*50)
+    print("[스크래핑 시작]")
+    print("="*50)
+    
     try:
-        # main.py --scrape 실행
-        result = subprocess.run(
+        # main.py --scrape 실행 (실시간 출력)
+        process = subprocess.Popen(
             [sys.executable, 'main.py', '--scrape'],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             cwd=os.path.dirname(os.path.abspath(__file__)),
-            timeout=300  # 5분 타임아웃
+            bufsize=1,  # 라인 버퍼링
+            encoding='utf-8',
+            errors='replace'
         )
+        
+        output_lines = []
+        try:
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    print(line, end='')  # 실시간 콘솔 출력
+                    output_lines.append(line)
+            process.wait(timeout=300)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            with scrape_lock:
+                scrape_state['last_result'] = {
+                    'success': False,
+                    'output': ''.join(output_lines[-50:]),
+                    'error': '스크래핑 시간 초과 (5분)'
+                }
+            return
         
         with scrape_lock:
             scrape_state['last_result'] = {
-                'success': result.returncode == 0,
-                'output': result.stdout[-1000:] if result.stdout else '',  # 마지막 1000자
-                'error': result.stderr[-500:] if result.stderr else ''
+                'success': process.returncode == 0,
+                'output': ''.join(output_lines[-50:]),  # 마지막 50줄
+                'error': '' if process.returncode == 0 else f'Exit code: {process.returncode}'
             }
-    except subprocess.TimeoutExpired:
-        with scrape_lock:
-            scrape_state['last_result'] = {
-                'success': False,
-                'output': '',
-                'error': '스크래핑 시간 초과 (5분)'
-            }
+            
+        print("\n" + "="*50)
+        print(f"[스크래핑 완료] 결과: {'성공' if process.returncode == 0 else '실패'}")
+        print("="*50 + "\n")
+        
     except Exception as e:
+        print(f"\n[스크래핑 오류] {e}\n")
         with scrape_lock:
             scrape_state['last_result'] = {
                 'success': False,
@@ -213,9 +249,22 @@ GAME_INFO = {
 }
 
 
+def check_admin():
+    """관리자 모드 확인"""
+    # URL 파라미터로 관리자 모드 활성화
+    if request.args.get('admin') == ADMIN_PASSWORD:
+        session['is_admin'] = True
+    # 로그아웃
+    if request.args.get('logout') == '1':
+        session.pop('is_admin', None)
+    return session.get('is_admin', False)
+
+
 @app.route('/')
 def index():
     """메인 페이지"""
+    is_admin = check_admin()
+    
     codes = get_all_codes()
     stats = get_stats()
     today_count = get_today_count()
@@ -242,6 +291,7 @@ def index():
                          game_info=GAME_INFO,
                          today_count=today_count,
                          scrape_info=scrape_info,
+                         is_admin=is_admin,
                          now=datetime.now)
 
 
@@ -322,6 +372,62 @@ def api_scrape_status():
             'remaining_seconds': remaining_seconds,
             'last_result': scrape_state['last_result']
         })
+
+
+@app.route('/api/codes/delete/<int:code_id>', methods=['DELETE'])
+def api_delete_code(code_id):
+    """API: 리딤코드 삭제 (관리자 전용, Soft Delete)
+    
+    Soft Delete: 실제로 DB에서 삭제하지 않고 is_deleted=True로 표시
+    이렇게 하면 다음 스크래핑에서 같은 코드를 다시 가져오지 않음
+    """
+    # 관리자 권한 확인
+    if not session.get('is_admin', False):
+        return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
+    
+    db_session = get_session()
+    try:
+        code = db_session.query(RedeemCode).filter_by(id=code_id).first()
+        if not code:
+            return jsonify({'success': False, 'message': '코드를 찾을 수 없습니다.'}), 404
+        
+        deleted_code = code.code
+        # Soft Delete: is_deleted=True로 표시 (실제 삭제 아님)
+        code.is_deleted = True
+        db_session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'"{deleted_code}" 삭제됨',
+            'deleted_id': code_id
+        })
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db_session.close()
+
+
+@app.route('/api/codes/refresh')
+def api_refresh_codes():
+    """API: 코드 목록 새로고침 (AJAX용)"""
+    codes = get_all_codes()
+    stats = get_stats()
+    today_count = get_today_count()
+    
+    # 게임별로 그룹화
+    codes_by_game = {}
+    for code in codes:
+        game = code['game']
+        if game not in codes_by_game:
+            codes_by_game[game] = []
+        codes_by_game[game].append(code)
+    
+    return jsonify({
+        'codes_by_game': codes_by_game,
+        'stats': stats,
+        'today_count': today_count
+    })
 
 
 if __name__ == '__main__':

@@ -337,6 +337,12 @@ def main():
         help='통계 보기'
     )
     
+    parser.add_argument(
+        '--scrape',
+        action='store_true',
+        help='스크래핑 실행 (웹 API용, 기본 동작과 동일)'
+    )
+    
     args = parser.parse_args()
     
     if args.list:
@@ -345,7 +351,8 @@ def main():
         list_sites()
     elif args.stats:
         show_stats()
-    else:
+    elif args.scrape or not any([args.list, args.sites, args.stats]):
+        # --scrape 또는 다른 옵션이 없을 때 스크래핑 실행
         scrape_all(
             max_pages=args.pages,
             max_articles=args.articles,

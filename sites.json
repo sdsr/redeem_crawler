@@ -3,7 +3,8 @@
     "리딤", "쿠폰", "코드", "기프트", "보상",
     "redeem", "coupon", "code", "gift", "reward",
     "cdkey", "cd-key", "cd key", "CDKEY", "CD-KEY", "CD KEY",
-    "giftcode", "gift code", "GIFTCODE", "GIFT CODE", "GIFT CODE"
+    "giftcode", "gift code", "GIFTCODE", "GIFT CODE", "GIFT CODE",
+    "리딤코드", "교환코드", "코드"
   ],
   "_keywords_설명": "제목이나 본문에 이 키워드 중 하나가 있어야 코드를 추출합니다",
   "sites": [

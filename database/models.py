@@ -24,6 +24,7 @@ class RedeemCode(Base):
         source_url: 코드를 발견한 게시글 URL
         source_title: 게시글 제목
         is_valid: 코드 유효 여부 (기본값: True)
+        is_deleted: 삭제 여부 (Soft Delete, 기본값: False)
         created_at: 생성 시간
         updated_at: 수정 시간
     """
@@ -35,6 +36,7 @@ class RedeemCode(Base):
     source_url = Column(String(500), nullable=True)
     source_title = Column(String(200), nullable=True)
     is_valid = Column(Boolean, default=True)
+    is_deleted = Column(Boolean, default=False, index=True)  # Soft Delete
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

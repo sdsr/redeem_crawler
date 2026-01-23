@@ -142,21 +142,23 @@ class CodeExtractor:
             
         검사 조건:
         1. 숫자만 있으면 안 됨 (일반 숫자와 구분)
-        2. 영문자만 있고 일반 단어 패턴이면 제외
-        3. 최소 하나의 숫자와 영문자가 섞여 있어야 함 (더 엄격하게)
-        4. X가 3개 이상 연속이면 제외 (마스킹된 값)
+        2. X가 4개 이상 연속이면 제외 (마스킹된 값)
+        3. 영문자+숫자 혼합 또는 특별 키워드 포함
         
         원신 리딤코드 예시:
         - GENSHINGIFT (영문자만, 특별 이벤트용)
         - VTPU3CQWYCSD (영문자+숫자 혼합, 일반적)
         - 3TPUKSV8C5X9 (숫자로 시작)
+        - ALLFIELD (엔드필드 코드, 8자)
+        - RETURNOFALL (엔드필드 코드, 11자)
         """
         # 숫자만 있는 경우 제외
         if code.isdigit():
             return False
         
-        # 너무 짧은 경우 제외 (리딤코드는 보통 12자)
-        if len(code) < 10:
+        # 너무 짧은 경우 제외 (8자 이상)
+        # 엔드필드 코드 ALLFIELD가 8자이므로 8자로 완화
+        if len(code) < 8:
             return False
         
         # X가 4개 이상 연속이면 제외 (마스킹된 전화번호, 계좌번호 등)
@@ -173,16 +175,23 @@ class CodeExtractor:
             return True
         
         # 영문자만 있는 경우: 특별 이벤트 코드일 수 있음
-        # 하지만 일반 영어 단어와 구분하기 어려우므로 
-        # 특별히 알려진 패턴만 허용 (예: GENSHINGIFT 형태)
+        # 게임별 특별 키워드가 포함된 경우 허용
         if has_letter and not has_digit:
-            # 영문자만 있는 코드는 매우 드물고
-            # 대부분 일반 단어이므로 기본적으로 제외
-            # 단, 특별히 "GIFT", "CODE", "REWARD" 등이 포함된 경우 허용
-            special_keywords = ['GIFT', 'CODE', 'REWARD', 'FREE', 'BONUS']
+            # 특별 키워드: 게임 이름 + 일반 리딤 키워드
+            special_keywords = [
+                'GIFT', 'CODE', 'REWARD', 'FREE', 'BONUS',
+                'FIELD', 'RETURN', 'ALL',  # 엔드필드용
+                'GENSHIN', 'STARRAIL', 'HONKAI', 'ZENLESS',  # 호요버스 게임
+                'WUWA', 'NIKKE', 'ARKNIGHTS',  # 기타 게임
+            ]
             for keyword in special_keywords:
                 if keyword in code and code != keyword:
                     return True
+            
+            # 10자 이상이고 exclusions에 없으면 허용 (긴 코드는 일반 단어일 가능성 낮음)
+            if len(code) >= 10:
+                return True
+            
             return False
         
         return False
