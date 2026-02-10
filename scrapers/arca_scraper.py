@@ -5,6 +5,7 @@ cloudscraper는 CloudFlare의 JavaScript Challenge를 우회하는
 requests 호환 라이브러리입니다.
 """
 
+import re
 import time
 from datetime import datetime, timedelta
 import cloudscraper
@@ -96,17 +97,62 @@ class ArcaScraper:
     
     def _parse_time_element(self, time_elem) -> Optional[datetime]:
         """<time> 태그에서 datetime을 파싱"""
-        if not time_elem or not time_elem.get('datetime'):
+        if not time_elem:
             return None
-        try:
-            dt_str = time_elem.get('datetime')
-            if dt_str.endswith('Z'):
-                dt_str = dt_str[:-1]
-            if '.' in dt_str:
-                dt_str = dt_str.split('.')[0]
-            return datetime.fromisoformat(dt_str)
-        except (ValueError, TypeError):
-            return None
+        
+        # 1) datetime 속성에서 파싱
+        dt_attr = time_elem.get('datetime')
+        if dt_attr:
+            try:
+                dt_str = dt_attr
+                if dt_str.endswith('Z'):
+                    dt_str = dt_str[:-1]
+                if '.' in dt_str:
+                    dt_str = dt_str.split('.')[0]
+                return datetime.fromisoformat(dt_str)
+            except (ValueError, TypeError):
+                pass
+        
+        # 2) 태그 텍스트에서 파싱 (예: "2025-04-11 21:41:56")
+        text = time_elem.get_text(strip=True)
+        if text:
+            try:
+                return datetime.strptime(text, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                pass
+            # 날짜만 있는 경우 (예: "2025-04-11")
+            try:
+                return datetime.strptime(text[:10], '%Y-%m-%d')
+            except ValueError:
+                pass
+        
+        return None
+    
+    def _find_date_from_soup(self, soup, label_keywords: List[str]) -> Optional[datetime]:
+        """
+        soup에서 특정 라벨(작성일, 수정일 등) 근처의 <time> 태그를 찾아 날짜를 파싱.
+        BeautifulSoup string 매칭 대신 정규식으로 유연하게 탐색.
+        """
+        # 모든 <span class="head"> 태그를 순회하며 텍스트에 키워드가 포함된 것 찾기
+        for head_span in soup.find_all('span', class_='head'):
+            head_text = head_span.get_text(strip=True)
+            if any(kw in head_text for kw in label_keywords):
+                # 인접한 <time> 태그 찾기
+                time_elem = head_span.find_next('time')
+                result = self._parse_time_element(time_elem)
+                if result:
+                    return result
+        
+        # 대안: <span class="date"> 안에서 라벨 텍스트 + <time> 조합 찾기
+        for date_span in soup.find_all('span', class_='date'):
+            date_text = date_span.get_text(strip=True)
+            if any(kw in date_text for kw in label_keywords):
+                time_elem = date_span.find('time')
+                result = self._parse_time_element(time_elem)
+                if result:
+                    return result
+        
+        return None
     
     def get_article_list(self, page: int = 1, max_age_days: int = 30) -> List[Tuple[str, str]]:
         """게시판 목록에서 게시글 정보를 가져옴 (날짜 필터 포함)
@@ -148,13 +194,17 @@ class ArcaScraper:
             title_elem = link.select_one('.col-title')
             title = title_elem.get_text(strip=True) if title_elem else "제목 없음"
             
-            # 날짜 필터: 목록의 <time> 태그에서 작성일 확인
-            time_elem = link.select_one('time')
+            # 날짜 필터: 목록의 <span class="vcol col-time"> 안 <time> 태그에서 작성일 확인
+            time_elem = link.select_one('.col-time time')
+            if not time_elem:
+                time_elem = link.select_one('time')  # fallback
             article_date = self._parse_time_element(time_elem)
             
             if article_date and article_date < cutoff_date:
                 skipped_old += 1
                 found_old_article = True
+                if skipped_old <= 3:  # 처음 3개만 로그
+                    print(f"[건너뛰기] 오래된 글: {title[:30]}... (작성일: {article_date.strftime('%Y-%m-%d')})")
                 continue
             
             # 게시글 URL인지 확인
@@ -169,50 +219,53 @@ class ArcaScraper:
         print(f"[정보] {len(articles)}개 새 게시글 발견")
         return articles, found_old_article
     
-    def get_article_content(self, url: str, include_comments: bool = True) -> Tuple[Optional[str], Optional[datetime]]:
+    def get_article_content(self, url: str, include_comments: bool = True) -> Tuple[Optional[str], Optional[datetime], Optional[datetime]]:
         """
-        게시글 본문 내용과 작성일을 가져옴
+        게시글 본문 내용, 작성일, 수정일을 가져옴
         
         Args:
             url: 게시글 URL
             include_comments: 댓글도 포함할지 여부 (기본값: True)
             
         Returns:
-            (본문 텍스트, 작성일) 튜플
+            (본문 텍스트, 작성일, 수정일) 튜플
         """
         soup = self._request(url)
         if not soup:
-            return None, None
+            return None, None, None
         
         all_text = []
         posted_at = None
+        modified_at = None
         
-        # 작성일 추출: <span class="head">작성일</span> 또는 <span class="head">Uploaded date</span>
-        # (아카라이브는 언어 설정에 따라 한글/영어로 표시됨)
-        date_head = soup.find('span', class_='head', string='작성일')
-        if not date_head:
-            date_head = soup.find('span', class_='head', string='Uploaded date')
+        # 작성일 추출 (작성일, Uploaded date, 등록일 등)
+        posted_at = self._find_date_from_soup(soup, ['작성일', 'Uploaded', '등록일'])
         
-        if date_head:
-            time_elem = date_head.find_next('time')
-            if time_elem and time_elem.get('datetime'):
-                try:
-                    # ISO 형식: 2026-01-03T14:25:41.000Z
-                    dt_str = time_elem.get('datetime')
-                    # .000Z 부분 처리
-                    if dt_str.endswith('Z'):
-                        dt_str = dt_str[:-1]  # Z 제거
-                    if '.' in dt_str:
-                        dt_str = dt_str.split('.')[0]  # 밀리초 제거
-                    posted_at = datetime.fromisoformat(dt_str)
-                except (ValueError, TypeError) as e:
-                    print(f"[경고] 작성일 파싱 실패: {e}")
+        # 수정일 추출 (수정일, Modified date 등)
+        modified_at = self._find_date_from_soup(soup, ['수정일', 'Modified'])
+        
+        # 디버그: 날짜 파싱 결과 출력
+        if posted_at:
+            print(f"       [날짜] 작성일: {posted_at.strftime('%Y-%m-%d %H:%M:%S')}")
+        if modified_at:
+            print(f"       [날짜] 수정일: {modified_at.strftime('%Y-%m-%d %H:%M:%S')}")
+        if not posted_at and not modified_at:
+            # 모든 <time> 태그를 확인해서 fallback
+            all_times = soup.find_all('time')
+            if all_times:
+                for t in all_times:
+                    parsed = self._parse_time_element(t)
+                    if parsed:
+                        posted_at = parsed
+                        print(f"       [날짜] fallback time 태그: {posted_at.strftime('%Y-%m-%d %H:%M:%S')}")
+                        break
+            if not posted_at:
+                print(f"       [경고] 날짜 정보를 찾을 수 없음")
         
         # 1. 본문 추출
         content_elem = soup.select_one('.article-content')
         if content_elem:
             # href 속성에서 URL도 추출 (링크에 코드가 포함된 경우)
-            # 예: https://genshin.hoyoverse.com/ko/gift?code=GENSHINQUIZ2026
             for link in content_elem.select('a[href]'):
                 href = link.get('href', '')
                 if 'code=' in href:
@@ -222,10 +275,8 @@ class ArcaScraper:
         
         # 2. 댓글 추출 (옵션)
         if include_comments:
-            # 아카라이브 댓글 선택자
             comment_elems = soup.select('.comment-content')
             for comment in comment_elems:
-                # 댓글 내 링크도 확인
                 for link in comment.select('a[href]'):
                     href = link.get('href', '')
                     if 'code=' in href:
@@ -236,7 +287,7 @@ class ArcaScraper:
                     all_text.append(comment_text)
         
         content = ' '.join(all_text) if all_text else None
-        return content, posted_at
+        return content, posted_at, modified_at
     
     def scrape_articles(self, max_pages: int = 1, max_articles: int = 10, max_age_days: int = 30) -> List[ArticleInfo]:
         """
@@ -280,12 +331,14 @@ class ArcaScraper:
                 # 키워드 필터링: 제목에 키워드가 있는지 먼저 확인
                 title_has_keyword = self.site_manager.has_keyword(title)
                 
-                # 본문과 작성일 추출
-                content, posted_at = self.get_article_content(url)
+                # 본문, 작성일, 수정일 추출
+                content, posted_at, modified_at = self.get_article_content(url)
                 
-                # 상세 페이지의 작성일로 한번 더 날짜 필터 확인
-                if posted_at and posted_at < cutoff_date:
-                    print(f"[건너뛰기] 오래된 글: {title[:30]}... (작성일: {posted_at.strftime('%Y-%m-%d')})")
+                # 수정일 기준으로 날짜 필터 (수정일 없으면 작성일로 확인)
+                check_date = modified_at or posted_at
+                if check_date and check_date < cutoff_date:
+                    date_label = "수정일" if modified_at else "작성일"
+                    print(f"[건너뛰기] 오래된 글: {title[:30]}... ({date_label}: {check_date.strftime('%Y-%m-%d')})")
                     self.article_service.mark_scraped(
                         url=url, game=self.game, title=title, codes_found=0
                     )
@@ -334,6 +387,8 @@ class ArcaScraper:
                     )
                     all_articles.append(article)
                     print(f"[발견] 리딤코드 {len(all_codes)}개: {all_codes}")
+                    if modified_at:
+                        print(f"       수정일: {modified_at.strftime('%Y-%m-%d %H:%M:%S')}")
                     if posted_at:
                         print(f"       작성일: {posted_at.strftime('%Y-%m-%d %H:%M:%S')}")
                 
