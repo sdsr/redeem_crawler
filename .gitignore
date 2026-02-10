@@ -47,3 +47,5 @@ playwright/
 # Misc
 *.bak
 *.tmp
+
+venv/
