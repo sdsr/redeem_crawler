@@ -37,8 +37,8 @@
       "game_name": "붕괴3rd",
       "site_type": "arca",
       "site_name": "아카라이브",
-      "url": "https://arca.live/b/honkai3rd?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
-      "enabled": false
+      "url": "https://arca.live/b/hk3rd?category=%EC%A0%95%EB%B3%B4",
+      "enabled": true
     },
     {
       "game": "wuwa",
@@ -77,7 +77,7 @@
       "game_name": "트릭컬 리바이브",
       "site_type": "arca",
       "site_name": "아카라이브",
-      "url": "https://arca.live/b/trickycalre?category=%F0%9F%92%A1%EC%A0%95%EB%B3%B4&target=all&keyword=%EB%A6%AC%EB%94%A4",
+      "url": "https://arca.live/b/trickcal?target=all&keyword=%EC%BF%A0%ED%8F%B0&p=1",
       "enabled": false
     },
     {

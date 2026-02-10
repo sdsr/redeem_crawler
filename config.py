@@ -59,3 +59,7 @@ REQUEST_HEADERS = {
 
 # 요청 간 대기 시간 (초)
 REQUEST_DELAY = 1.0
+
+# 스크래핑 날짜 필터 (일)
+# 이 기간보다 오래된 게시글은 스크래핑하지 않음
+MAX_AGE_DAYS = 30

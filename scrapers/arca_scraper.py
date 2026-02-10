@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 from typing import List, Optional, Tuple
 from dataclasses import dataclass
 
-from config import REQUEST_HEADERS, REQUEST_DELAY, ARCA_BASE_URL
+from config import REQUEST_HEADERS, REQUEST_DELAY, ARCA_BASE_URL, MAX_AGE_DAYS
 from utils.code_extractor import CodeExtractor
 from services.code_service import ArticleService
 from site_manager import SiteManager
@@ -154,12 +154,12 @@ class ArcaScraper:
         
         return None
     
-    def get_article_list(self, page: int = 1, max_age_days: int = 30) -> List[Tuple[str, str]]:
+    def get_article_list(self, page: int = 1, max_age_days: int = None) -> List[Tuple[str, str]]:
         """게시판 목록에서 게시글 정보를 가져옴 (날짜 필터 포함)
         
         Args:
             page: 페이지 번호
-            max_age_days: 최대 게시글 나이 (일). 이보다 오래된 글은 건너뜀. 기본값 30일.
+            max_age_days: 최대 게시글 나이 (일). None이면 config.MAX_AGE_DAYS 사용.
         """
         if not self.search_url:
             print("[오류] 검색 URL이 설정되지 않았습니다.")
@@ -175,6 +175,9 @@ class ArcaScraper:
         soup = self._request(url)
         if not soup:
             return [], False
+        
+        if max_age_days is None:
+            max_age_days = MAX_AGE_DAYS
         
         articles = []
         skipped_old = 0
@@ -289,22 +292,26 @@ class ArcaScraper:
         content = ' '.join(all_text) if all_text else None
         return content, posted_at, modified_at
     
-    def scrape_articles(self, max_pages: int = 1, max_articles: int = 10, max_age_days: int = 30) -> List[ArticleInfo]:
+    def scrape_articles(self, max_pages: int = 1, max_articles: int = 10, max_age_days: int = None) -> List[ArticleInfo]:
         """
         게시글을 스크래핑하고 리딤코드를 추출
         
         Args:
             max_pages: 스크래핑할 최대 페이지 수
             max_articles: 처리할 최대 게시글 수
-            max_age_days: 최대 게시글 나이 (일). 기본값 30일.
+            max_age_days: 최대 게시글 나이 (일). None이면 config.MAX_AGE_DAYS 사용.
             
         Returns:
             ArticleInfo 리스트 (리딤코드가 발견된 게시글만)
         """
+        if max_age_days is None:
+            max_age_days = MAX_AGE_DAYS
+        
         all_articles = []
         articles_processed = 0
         skipped_count = 0
         cutoff_date = datetime.utcnow() - timedelta(days=max_age_days)
+        print(f"[정보] 날짜 필터: {max_age_days}일 이내 (기준일: {cutoff_date.strftime('%Y-%m-%d')})")
         
         for page in range(1, max_pages + 1):
             if articles_processed >= max_articles:
