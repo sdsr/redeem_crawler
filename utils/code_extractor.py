@@ -90,6 +90,9 @@ class CodeExtractor:
         # 대문자로 변환하여 반환
         return [code.upper() for code in matches]
     
+    # URL을 제거하는 패턴 (http:// 또는 https://로 시작하는 문자열)
+    URL_REMOVE_PATTERN = re.compile(r'https?://\S+', re.IGNORECASE)
+    
     def extract(self, text: str) -> List[str]:
         """
         텍스트에서 리딤코드를 추출합니다.
@@ -99,24 +102,21 @@ class CodeExtractor:
             
         Returns:
             발견된 리딤코드 리스트 (중복 제거됨)
-            
-        사용된 문법:
-        - set(): 중복 제거를 위한 집합 자료형
-        - findall(): 패턴에 매칭되는 모든 문자열 반환
         """
         if not text:
             return []
         
-        # 대문자로 변환하여 검색 (리딤코드는 대소문자 구분 없이 입력 가능)
-        text_upper = text.upper()
-        
         found_codes: Set[str] = set()
         
-        # 1. URL에서 코드 추출 (우선순위 높음 - 검증 없이 추가)
+        # 1. URL에서 code= 파라미터 추출 (우선순위 높음)
         url_codes = self.extract_from_url(text)
         found_codes.update(url_codes)
         
-        # 2. 일반 패턴으로 코드 추출
+        # 2. URL을 제거한 텍스트에서 코드 추출
+        #    URL 안의 경로/파라미터 단어가 코드로 잘못 인식되는 것 방지
+        text_no_urls = self.URL_REMOVE_PATTERN.sub(' ', text)
+        text_upper = text_no_urls.upper()
+        
         for pattern in self.compiled_patterns:
             matches = pattern.findall(text_upper)
             found_codes.update(matches)

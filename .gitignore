@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Database
+# *.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Debug files
+debug_*.py
+debug_*.html
+debug_*.json
+test_*.py
+
+# Playwright browsers
+playwright/
+
+# Misc
+*.bak
+*.tmp
