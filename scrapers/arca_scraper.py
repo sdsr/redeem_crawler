@@ -6,7 +6,7 @@ requests 호환 라이브러리입니다.
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import cloudscraper
 from bs4 import BeautifulSoup
 from typing import List, Optional, Tuple
@@ -94,11 +94,30 @@ class ArcaScraper:
             print(f"       원인: {e}")
             return None
     
-    def get_article_list(self, page: int = 1) -> List[Tuple[str, str]]:
-        """게시판 목록에서 게시글 정보를 가져옴"""
+    def _parse_time_element(self, time_elem) -> Optional[datetime]:
+        """<time> 태그에서 datetime을 파싱"""
+        if not time_elem or not time_elem.get('datetime'):
+            return None
+        try:
+            dt_str = time_elem.get('datetime')
+            if dt_str.endswith('Z'):
+                dt_str = dt_str[:-1]
+            if '.' in dt_str:
+                dt_str = dt_str.split('.')[0]
+            return datetime.fromisoformat(dt_str)
+        except (ValueError, TypeError):
+            return None
+    
+    def get_article_list(self, page: int = 1, max_age_days: int = 30) -> List[Tuple[str, str]]:
+        """게시판 목록에서 게시글 정보를 가져옴 (날짜 필터 포함)
+        
+        Args:
+            page: 페이지 번호
+            max_age_days: 최대 게시글 나이 (일). 이보다 오래된 글은 건너뜀. 기본값 30일.
+        """
         if not self.search_url:
             print("[오류] 검색 URL이 설정되지 않았습니다.")
-            return []
+            return [], False
         
         url = self.search_url
         if page > 1:
@@ -109,9 +128,12 @@ class ArcaScraper:
         
         soup = self._request(url)
         if not soup:
-            return []
+            return [], False
         
         articles = []
+        skipped_old = 0
+        cutoff_date = datetime.utcnow() - timedelta(days=max_age_days)
+        found_old_article = False
         article_links = soup.select('a.vrow.column')
         
         for link in article_links:
@@ -126,6 +148,15 @@ class ArcaScraper:
             title_elem = link.select_one('.col-title')
             title = title_elem.get_text(strip=True) if title_elem else "제목 없음"
             
+            # 날짜 필터: 목록의 <time> 태그에서 작성일 확인
+            time_elem = link.select_one('time')
+            article_date = self._parse_time_element(time_elem)
+            
+            if article_date and article_date < cutoff_date:
+                skipped_old += 1
+                found_old_article = True
+                continue
+            
             # 게시글 URL인지 확인
             if '/b/' in href and href.count('/') >= 3:
                 # 이미 스크래핑한 URL인지 확인
@@ -133,8 +164,10 @@ class ArcaScraper:
                     continue
                 articles.append((full_url, title))
         
+        if skipped_old > 0:
+            print(f"[정보] {skipped_old}개 게시글 건너뜀 (작성일 {max_age_days}일 초과)")
         print(f"[정보] {len(articles)}개 새 게시글 발견")
-        return articles
+        return articles, found_old_article
     
     def get_article_content(self, url: str, include_comments: bool = True) -> Tuple[Optional[str], Optional[datetime]]:
         """
@@ -205,13 +238,14 @@ class ArcaScraper:
         content = ' '.join(all_text) if all_text else None
         return content, posted_at
     
-    def scrape_articles(self, max_pages: int = 1, max_articles: int = 10) -> List[ArticleInfo]:
+    def scrape_articles(self, max_pages: int = 1, max_articles: int = 10, max_age_days: int = 30) -> List[ArticleInfo]:
         """
         게시글을 스크래핑하고 리딤코드를 추출
         
         Args:
             max_pages: 스크래핑할 최대 페이지 수
             max_articles: 처리할 최대 게시글 수
+            max_age_days: 최대 게시글 나이 (일). 기본값 30일.
             
         Returns:
             ArticleInfo 리스트 (리딤코드가 발견된 게시글만)
@@ -219,16 +253,23 @@ class ArcaScraper:
         all_articles = []
         articles_processed = 0
         skipped_count = 0
+        cutoff_date = datetime.utcnow() - timedelta(days=max_age_days)
         
         for page in range(1, max_pages + 1):
             if articles_processed >= max_articles:
                 break
             
-            article_list = self.get_article_list(page)
+            article_list, found_old = self.get_article_list(page, max_age_days=max_age_days)
             
             if not article_list:
                 print(f"[정보] 페이지 {page}에서 새 게시글 없음")
+                if found_old:
+                    print(f"[정보] 오래된 글이 발견되어 이후 페이지 탐색 중단")
+                    break
                 continue
+            
+            # 오래된 글이 목록에 나타났으면 이 페이지만 처리하고 중단
+            stop_after_this_page = found_old
             
             for url, title in article_list:
                 if articles_processed >= max_articles:
@@ -241,6 +282,15 @@ class ArcaScraper:
                 
                 # 본문과 작성일 추출
                 content, posted_at = self.get_article_content(url)
+                
+                # 상세 페이지의 작성일로 한번 더 날짜 필터 확인
+                if posted_at and posted_at < cutoff_date:
+                    print(f"[건너뛰기] 오래된 글: {title[:30]}... (작성일: {posted_at.strftime('%Y-%m-%d')})")
+                    self.article_service.mark_scraped(
+                        url=url, game=self.game, title=title, codes_found=0
+                    )
+                    articles_processed += 1
+                    continue
                 
                 # 제목에 키워드가 없으면 본문에서도 확인
                 if not title_has_keyword:
@@ -288,6 +338,11 @@ class ArcaScraper:
                         print(f"       작성일: {posted_at.strftime('%Y-%m-%d %H:%M:%S')}")
                 
                 articles_processed += 1
+            
+            # 오래된 글이 목록에 있었으면 다음 페이지는 더 오래된 글뿐이므로 중단
+            if stop_after_this_page:
+                print(f"[정보] 오래된 글이 발견되어 이후 페이지 탐색 중단")
+                break
         
         return all_articles
     
