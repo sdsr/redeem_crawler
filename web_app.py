@@ -4,10 +4,14 @@
 Flask 기반 웹 애플리케이션으로 저장된 리딤코드를 확인합니다.
 """
 
-from flask import Flask, render_template, jsonify, request, session
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from database import get_session, RedeemCode
 from sqlalchemy import func
 from datetime import datetime, date, timedelta
+from dotenv import load_dotenv
+from werkzeug.security import check_password_hash
+import hmac
+import os
 import threading
 import sys
 import secrets
@@ -23,12 +27,19 @@ def configure_output_encoding():
 
 
 configure_output_encoding()
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)  # 세션용 시크릿 키
+app.secret_key = os.environ.get('REDEEM_SCROLL_SECRET_KEY') or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+)
+if os.environ.get('REDEEM_SCROLL_COOKIE_SECURE') == '1':
+    app.config['SESSION_COOKIE_SECURE'] = True
 
-# 관리자 비밀번호 (원하는 값으로 변경하세요)
-ADMIN_PASSWORD = "admin1234"
+ADMIN_PASSWORD_ENV = 'REDEEM_SCROLL_ADMIN_PASSWORD'
+ADMIN_PASSWORD_HASH_ENV = 'REDEEM_SCROLL_ADMIN_PASSWORD_HASH'
 
 # 스크래핑 상태 관리
 scrape_state = {
@@ -79,6 +90,43 @@ def get_all_codes():
         return result
     finally:
         session.close()
+
+
+def hide_admin_only_code_fields(codes):
+    """Remove source/date metadata from public API responses."""
+    admin_only_fields = ('source_title', 'source_url', 'source_posted_at', 'created_at', 'sort_at')
+    public_codes = []
+    for code in codes:
+        public_code = code.copy()
+        for field in admin_only_fields:
+            public_code.pop(field, None)
+        public_codes.append(public_code)
+    return public_codes
+
+
+def is_admin():
+    """Return whether the current session has admin privileges."""
+    return session.get('is_admin') is True
+
+
+def is_admin_password_configured():
+    """Return whether an admin password or password hash is configured."""
+    return bool(os.environ.get(ADMIN_PASSWORD_HASH_ENV) or os.environ.get(ADMIN_PASSWORD_ENV))
+
+
+def verify_admin_password(password):
+    """Verify the submitted admin password without exposing it in URLs or logs."""
+    password = password or ''
+    password_hash = os.environ.get(ADMIN_PASSWORD_HASH_ENV)
+    if password_hash:
+        return check_password_hash(password_hash, password)
+
+    expected_password = os.environ.get(ADMIN_PASSWORD_ENV)
+    return bool(expected_password) and hmac.compare_digest(password, expected_password)
+
+
+def admin_required_response():
+    return jsonify({'success': False, 'message': '관리자 로그인이 필요합니다.'}), 403
 
 
 def get_today_count():
@@ -265,21 +313,43 @@ GAME_INFO = {
 }
 
 
-def check_admin():
-    """관리자 모드 확인"""
-    # URL 파라미터로 관리자 모드 활성화
-    if request.args.get('admin') == ADMIN_PASSWORD:
-        session['is_admin'] = True
-    # 로그아웃
-    if request.args.get('logout') == '1':
-        session.pop('is_admin', None)
-    return session.get('is_admin', False)
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """관리자 로그인"""
+    if is_admin():
+        return redirect(url_for('index'))
+
+    error = None
+    status_code = 200
+    if request.method == 'POST':
+        if not is_admin_password_configured():
+            error = '관리자 비밀번호가 설정되어 있지 않습니다.'
+            status_code = 503
+        elif verify_admin_password(request.form.get('password')):
+            session['is_admin'] = True
+            return redirect(url_for('index'))
+        else:
+            error = '비밀번호가 올바르지 않습니다.'
+            status_code = 401
+
+    return render_template(
+        'admin_login.html',
+        error=error,
+        is_configured=is_admin_password_configured()
+    ), status_code
+
+
+@app.route('/admin/logout')
+def admin_logout():
+    """관리자 로그아웃"""
+    session.pop('is_admin', None)
+    return redirect(url_for('index'))
 
 
 @app.route('/')
 def index():
     """메인 페이지"""
-    is_admin = check_admin()
+    admin_mode = is_admin()
     
     codes = get_all_codes()
     stats = get_stats()
@@ -319,7 +389,7 @@ def index():
                          recent_new=recent_new,
                          today_count=today_count,
                          scrape_info=scrape_info,
-                         is_admin=is_admin,
+                         is_admin=admin_mode,
                          now=datetime.now)
 
 
@@ -327,6 +397,8 @@ def index():
 def api_codes():
     """API: 코드 목록"""
     codes = get_all_codes()
+    if not is_admin():
+        codes = hide_admin_only_code_fields(codes)
     return jsonify(codes)
 
 
@@ -341,6 +413,9 @@ def api_stats():
 def api_scrape():
     """API: 스크래핑 시작"""
     global scrape_state
+
+    if not is_admin():
+        return admin_required_response()
     
     print("\n[API] /api/scrape 호출됨")
     sys.stdout.flush()
@@ -395,6 +470,9 @@ def api_scrape():
 @app.route('/api/scrape/status')
 def api_scrape_status():
     """API: 스크래핑 상태 확인"""
+    if not is_admin():
+        return admin_required_response()
+
     with scrape_lock:
         # 남은 쿨타임 계산
         remaining_seconds = 0
@@ -419,6 +497,9 @@ def api_scrape_ack():
     클라이언트에서 결과를 확인한 후 호출하여 중복 새로고침 방지
     """
     global scrape_state
+    if not is_admin():
+        return admin_required_response()
+
     with scrape_lock:
         scrape_state['last_result'] = None
     return jsonify({'success': True})
@@ -432,7 +513,7 @@ def api_delete_code(code_id):
     이렇게 하면 다음 스크래핑에서 같은 코드를 다시 가져오지 않음
     """
     # 관리자 권한 확인
-    if not session.get('is_admin', False):
+    if not is_admin():
         return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
     
     db_session = get_session()
@@ -462,6 +543,8 @@ def api_delete_code(code_id):
 def api_refresh_codes():
     """API: 코드 목록 새로고침 (AJAX용)"""
     codes = get_all_codes()
+    if not is_admin():
+        codes = hide_admin_only_code_fields(codes)
     stats = get_stats()
     today_count = get_today_count()
     
@@ -482,7 +565,7 @@ def api_refresh_codes():
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("  리딤코드 뷰어 시작")
+    print("  Redeem Note 시작")
     print("  http://localhost:5000 에서 확인하세요")
     print("=" * 50)
     # use_reloader=False: 리로더가 2개 프로세스를 띄우는 것 방지
