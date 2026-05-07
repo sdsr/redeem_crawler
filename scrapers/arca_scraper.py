@@ -8,6 +8,7 @@ requests 호환 라이브러리입니다.
 import re
 import time
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 import cloudscraper
 from bs4 import BeautifulSoup
 from typing import List, Optional, Tuple
@@ -57,6 +58,7 @@ class ArcaScraper:
         self.game = game
         self.search_url = search_url
         self.skip_scraped = skip_scraped
+        self.board_slug = self._extract_board_slug(search_url)
         
         # cloudscraper 세션 생성
         self.scraper = cloudscraper.create_scraper(
@@ -67,6 +69,7 @@ class ArcaScraper:
             }
         )
         self.scraper.headers.update(REQUEST_HEADERS)
+        self.last_request_error = None
         
         # 코드 추출기 초기화
         self.extractor = CodeExtractor(patterns=self.DEFAULT_CODE_PATTERNS)
@@ -80,17 +83,30 @@ class ArcaScraper:
         print(f"[정보] CloudScraper 초기화 완료 (게임: {game})")
         print(f"[정보] 키워드 필터 활성화: {self.site_manager.get_keywords()}")
     
+    @staticmethod
+    def _extract_board_slug(url: str) -> Optional[str]:
+        if not url:
+            return None
+        path = urlparse(url).path
+        parts = path.strip('/').split('/')
+        if len(parts) >= 2 and parts[0] == 'b':
+            return parts[1]
+        return None
+    
     def _request(self, url: str) -> Optional[BeautifulSoup]:
         """URL에 GET 요청을 보내고 BeautifulSoup 객체를 반환"""
+        self.last_request_error = None
         try:
             time.sleep(REQUEST_DELAY)
             response = self.scraper.get(url, timeout=15)
             response.raise_for_status()
             return BeautifulSoup(response.text, 'lxml')
         except cloudscraper.exceptions.CloudflareChallengeError as e:
+            self.last_request_error = f"CloudFlare Challenge 실패: {e}"
             print(f"[오류] CloudFlare Challenge 실패: {url}")
             return None
         except Exception as e:
+            self.last_request_error = str(e)
             print(f"[오류] 요청 실패: {url}")
             print(f"       원인: {e}")
             return None
@@ -174,6 +190,8 @@ class ArcaScraper:
         
         soup = self._request(url)
         if not soup:
+            if self.last_request_error:
+                raise RuntimeError(f"게시글 목록 요청 실패: {self.last_request_error}")
             return [], False
         
         if max_age_days is None:
@@ -192,6 +210,10 @@ class ArcaScraper:
                 full_url = ARCA_BASE_URL + href
             else:
                 full_url = href
+            
+            link_board_slug = self._extract_board_slug(full_url)
+            if self.board_slug and link_board_slug and link_board_slug != self.board_slug:
+                continue
             
             # 제목 추출
             title_elem = link.select_one('.col-title')
@@ -235,6 +257,8 @@ class ArcaScraper:
         """
         soup = self._request(url)
         if not soup:
+            if self.last_request_error:
+                raise RuntimeError(f"게시글 요청 실패: {self.last_request_error}")
             return None, None, None
         
         all_text = []

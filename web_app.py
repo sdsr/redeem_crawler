@@ -12,6 +12,18 @@ import threading
 import sys
 import secrets
 
+
+def configure_output_encoding():
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+configure_output_encoding()
+
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)  # 세션용 시크릿 키
 
@@ -38,8 +50,10 @@ def get_all_codes():
         codes = session.query(RedeemCode).filter(
             RedeemCode.is_deleted == False
         ).order_by(
+            func.coalesce(RedeemCode.source_posted_at, RedeemCode.created_at).desc(),
             RedeemCode.game,
-            RedeemCode.created_at.desc()
+            RedeemCode.created_at.desc(),
+            RedeemCode.id.desc()
         ).all()
         
         result = []
@@ -48,6 +62,7 @@ def get_all_codes():
             is_new = False
             if code.created_at:
                 is_new = code.created_at.date() == today
+            sort_at = code.source_posted_at or code.created_at
             
             result.append({
                 'id': code.id,
@@ -58,7 +73,8 @@ def get_all_codes():
                 'source_posted_at': code.source_posted_at.strftime('%Y-%m-%d %H:%M') if code.source_posted_at else '',
                 'is_valid': code.is_valid,
                 'is_new': is_new,
-                'created_at': code.created_at.strftime('%Y-%m-%d %H:%M') if code.created_at else ''
+                'created_at': code.created_at.strftime('%Y-%m-%d %H:%M') if code.created_at else '',
+                'sort_at': sort_at.isoformat() if sort_at else ''
             })
         return result
     finally:
@@ -121,17 +137,31 @@ def run_scraper():
         sys.stdout.flush()
         
         # 스크래핑 실행
-        scrape_all(max_pages=1, max_articles=20, skip_scraped=True)
+        results = scrape_all(max_pages=1, max_articles=20, skip_scraped=True) or {}
+        error_count = results.get('errors', 0)
+        saved_count = results.get('saved', 0)
+        duplicate_count = results.get('duplicates', 0)
+        error_sites = results.get('error_sites', [])
+        summary = (
+            f"새 코드 {saved_count}개 저장, "
+            f"중복 {duplicate_count}개 스킵"
+        )
+        if error_count:
+            summary += f", 오류 {error_count}개"
         
         with scrape_lock:
             scrape_state['last_result'] = {
-                'success': True,
-                'output': '스크래핑 완료',
-                'error': ''
+                'success': error_count == 0,
+                'partial': error_count > 0,
+                'output': summary,
+                'error': ', '.join(error_sites) if error_sites else ''
             }
             
         print("\n" + "="*50)
-        print("[스크래핑 완료] 성공")
+        if error_count:
+            print(f"[스크래핑 완료] 부분 실패: {', '.join(error_sites)}")
+        else:
+            print("[스크래핑 완료] 성공")
         print("="*50 + "\n")
         sys.stdout.flush()
         
@@ -264,6 +294,17 @@ def index():
         codes_by_game[game].append(code)
     
     # 스크래핑 상태
+    recent_new = []
+    for code in sorted((c for c in codes if c['is_new']), key=lambda c: c.get('sort_at') or '', reverse=True)[:10]:
+        game = code['game']
+        info = GAME_INFO.get(game, {})
+        recent_new.append({
+            'code': code['code'],
+            'game': game,
+            'name': info.get('name', game),
+            'color': info.get('color', '#6366f1')
+        })
+    
     with scrape_lock:
         scrape_info = {
             'is_running': scrape_state['is_running'],
@@ -275,6 +316,7 @@ def index():
                          codes_by_game=codes_by_game,
                          stats=stats,
                          game_info=GAME_INFO,
+                         recent_new=recent_new,
                          today_count=today_count,
                          scrape_info=scrape_info,
                          is_admin=is_admin,

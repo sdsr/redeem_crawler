@@ -15,6 +15,18 @@
 import argparse
 import sys
 
+
+def configure_output_encoding():
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+configure_output_encoding()
+
 sys.path.insert(0, '.')
 
 from site_manager import SiteManager, SiteConfig
@@ -92,12 +104,25 @@ def scrape_site(site: SiteConfig, max_pages: int = 1, max_articles: int = 10,
             finally:
                 scraper.close()
         else:
-            print(f"[오류] 지원하지 않는 사이트 유형: {site.site_type}")
-            return {"saved": 0, "duplicates": 0, "errors": 1}
+            error_msg = f"지원하지 않는 사이트 유형: {site.site_type}"
+            print(f"[오류] {error_msg}")
+            return {
+                "saved": 0,
+                "duplicates": 0,
+                "errors": 1,
+                "error": error_msg,
+                "error_sites": [site.game],
+            }
         
         if not codes_to_save:
             print(f"\n[완료] {site.game_name} - 새로운 리딤코드 없음")
-            return {"saved": 0, "duplicates": 0}
+            return {
+                "saved": 0,
+                "duplicates": 0,
+                "errors": 0,
+                "saved_codes": [],
+                "duplicate_codes": [],
+            }
         
         # 배치 저장
         results = service.save_codes_batch(codes_to_save)
@@ -114,8 +139,15 @@ def scrape_site(site: SiteConfig, max_pages: int = 1, max_articles: int = 10,
         return results
         
     except Exception as e:
-        print(f"[오류] 스크래핑 실패: {e}")
-        return {"saved": 0, "duplicates": 0, "errors": 1}
+        error_msg = str(e)
+        print(f"[오류] 스크래핑 실패: {error_msg}")
+        return {
+            "saved": 0,
+            "duplicates": 0,
+            "errors": 1,
+            "error": error_msg,
+            "error_sites": [site.game],
+        }
 
 
 def scrape_all(max_pages: int = 1, max_articles: int = 20,
@@ -150,8 +182,10 @@ def scrape_all(max_pages: int = 1, max_articles: int = 20,
     total_results = {
         "saved": 0,
         "duplicates": 0,
+        "errors": 0,
         "saved_codes": [],
-        "duplicate_codes": []
+        "duplicate_codes": [],
+        "error_sites": [],
     }
     
     total_sites = len(sites)
@@ -171,8 +205,10 @@ def scrape_all(max_pages: int = 1, max_articles: int = 20,
         
         total_results["saved"] += results.get("saved", 0)
         total_results["duplicates"] += results.get("duplicates", 0)
+        total_results["errors"] += results.get("errors", 0)
         total_results["saved_codes"].extend(results.get("saved_codes", []))
         total_results["duplicate_codes"].extend(results.get("duplicate_codes", []))
+        total_results["error_sites"].extend(results.get("error_sites", []))
     
     # 최종 결과
     print(f"\n{'='*60}")
@@ -180,6 +216,10 @@ def scrape_all(max_pages: int = 1, max_articles: int = 20,
     print(f"{'='*60}")
     print(f"  - 새로 저장된 코드: {total_results['saved']}개")
     print(f"  - 중복 코드 (스킵): {total_results['duplicates']}개")
+    if total_results["errors"] > 0:
+        print(f"  - 오류 발생 사이트: {total_results['errors']}개")
+        for game in total_results["error_sites"]:
+            print(f"    - {game}")
     
     # DB 통계
     stats = code_service.get_stats()
@@ -189,6 +229,8 @@ def scrape_all(max_pages: int = 1, max_articles: int = 20,
         print("  - 게임별:")
         for game, count in stats['by_game'].items():
             print(f"    - {game}: {count}개")
+    
+    return total_results
 
 
 def print_available_games(manager: SiteManager):
